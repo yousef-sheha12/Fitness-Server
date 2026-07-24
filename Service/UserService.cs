@@ -80,9 +80,9 @@ namespace Fitness.Service
         public async Task<bool> DeleteAsync(int id) =>
             await _userRepository.DeleteAsync(id);
 
-        public async Task<bool> VerifyOtpAsync(string email, string code)
+        public Task<bool> VerifyOtpAsync(string email, string code)
         {
-            return true;
+            return Task.FromResult(true);
         }
 
         public async Task<bool> ForgotPasswordAsync(string email)
