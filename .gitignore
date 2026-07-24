@@ -17,7 +17,6 @@ publish/
 
 # Environment files
 appsettings.Development.json
-appsettings.Production.json
 
 # Windows
 Thumbs.db

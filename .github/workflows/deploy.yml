@@ -1,0 +1,77 @@
+name: Deploy Backend to MonsterASP
+
+on:
+  push:
+    branches: [ "main" ] 
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0' 
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Inject Production Config
+      run: |
+        cat > appsettings.Production.json << 'EOF'
+        {
+          "ConnectionStrings": {
+            "FitnessDatabase": "${{ secrets.DB_CONNECTION_STRING }}"
+          },
+          "AppSettings": {
+            "Issuer": "MyIssuerApp",
+            "Audience": "MyAudienceApp",
+            "Token": "${{ secrets.JWT_SECRET }}",
+            "BaseUrl": "${{ secrets.BASE_URL }}"
+          },
+          "EmailSettings": {
+            "SmtpServer": "smtp.gmail.com",
+            "Port": "587",
+            "FromEmail": "${{ secrets.EMAIL_FROM }}",
+            "Username": "${{ secrets.EMAIL_USERNAME }}",
+            "Password": "${{ secrets.EMAIL_PASSWORD }}"
+          },
+          "StripeSettings": {
+            "SecretKey": "${{ secrets.STRIPE_SECRET_KEY }}",
+            "PublishableKey": "${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
+          }
+        }
+        EOF
+
+    - name: Build and Publish
+      run: dotnet publish -c Release -o ./publish
+
+    - name: Generate Migration Script
+      run: |
+        dotnet tool install --global dotnet-ef --version 8.0.0
+        dotnet ef migrations script --idempotent --output ./publish/db-script.sql --project Fitness.csproj
+      continue-on-error: true
+
+    - name: Install lftp
+      run: sudo apt-get update && sudo apt-get install -y lftp
+
+    - name: Stop site (upload app_offline.htm)
+      run: |
+        echo "<html><body><h1>Deploying...</h1></body></html>" > app_offline.htm
+        lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }} -e "set ssl:verify-certificate no; put app_offline.htm -o /wwwroot/app_offline.htm; bye"
+
+    - name: Deploy via FTP
+      run: |
+        lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }} -e "
+          set ssl:verify-certificate no;
+          set ftp:ssl-allow yes;
+          mirror -R --verbose --delete --parallel=5 --no-perms ./publish/ /wwwroot/;
+          bye"
+
+    - name: Remove app_offline.htm
+      run: |
+        lftp -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }} -e "set ssl:verify-certificate no; rm /wwwroot/app_offline.htm; bye" || true

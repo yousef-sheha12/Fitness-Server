@@ -37,6 +37,26 @@ namespace Fitness.Data
                 .HasIndex(ts => new { ts.TrainerId, ts.SpecializationId })
                 .IsUnique();
 
+            modelBuilder.Entity<Trainer>()
+                .Property(t => t.Rating)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<TrainerPackage>()
+                .Property(tp => tp.Price)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Booking>()
+                .Property(b => b.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Payment>()
+                .Property(p => p.Amount)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<PackagePurchase>()
+                .Property(pp => pp.AmountPaid)
+                .HasColumnType("decimal(18,2)");
+
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
         }
     }
