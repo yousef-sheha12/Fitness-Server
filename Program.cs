@@ -28,8 +28,11 @@ builder.Services.AddScoped<IFitnessProfileRepository, FitnessProfileRepository>(
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IWorkoutHistoryRepository, WorkoutHistoryRepository>();
 builder.Services.AddScoped<IProgressActivityRepository, ProgressActivityRepository>();
-builder.Services.AddScoped<IContactRepository, ContactRepository>();
-builder.Services.AddScoped<IPackagePurchaseRepository, PackagePurchaseRepository>();
+        builder.Services.AddScoped<IContactRepository, ContactRepository>();
+        builder.Services.AddScoped<IPackagePurchaseRepository, PackagePurchaseRepository>();
+        builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+        builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
+        builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITrainerService, TrainerService>();
@@ -41,8 +44,10 @@ builder.Services.AddScoped<IFitnessProfileService, FitnessProfileService>();
 builder.Services.AddScoped<IWorkoutHistoryService, WorkoutHistoryService>();
 builder.Services.AddScoped<IProgressActivityService, ProgressActivityService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
-builder.Services.AddScoped<IContactService, ContactService>();
-builder.Services.AddScoped<IPackagePurchaseService, PackagePurchaseService>();
+        builder.Services.AddScoped<IContactService, ContactService>();
+        builder.Services.AddScoped<IPackagePurchaseService, PackagePurchaseService>();
+        builder.Services.AddScoped<INotificationService, NotificationService>();
+        builder.Services.AddScoped<IConversationService, ConversationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
@@ -52,7 +57,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("https://fitness-team-1.vercel.app", "http://localhost:3000", "http://localhost:5173")
+        policy.WithOrigins("https://fitness-team-1.vercel.app", "http://localhost:3000", "http://localhost:5173", "http://localhost:5174")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

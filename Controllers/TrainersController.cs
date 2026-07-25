@@ -1,5 +1,7 @@
+using Fitness.Data;
 using Fitness.Interface.IService;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Fitness.Controllers
 {
@@ -8,11 +10,13 @@ namespace Fitness.Controllers
     {
         private readonly ITrainerService _trainerService;
         private readonly ISessionService _sessionService;
+        private readonly AppDbContext _context;
 
-        public TrainersController(ITrainerService trainerService, ISessionService sessionService)
+        public TrainersController(ITrainerService trainerService, ISessionService sessionService, AppDbContext context)
         {
             _trainerService = trainerService;
             _sessionService = sessionService;
+            _context = context;
         }
 
         private IActionResult ApiResponse(object? data = null, string message = "Success", int statusCode = 200)
@@ -43,9 +47,24 @@ namespace Fitness.Controllers
         }
 
         [HttpGet("api/trainers/{id}/availability")]
-        public IActionResult GetTrainerAvailability(int id)
+        public async Task<IActionResult> GetTrainerAvailability(int id)
         {
-            return ApiResponse(new { trainerId = id, available = true });
+            var trainer = await _trainerService.GetByIdAsync(id);
+            if (trainer == null) return ApiResponse(null, "Trainer not found", 404);
+
+            var now = DateTime.UtcNow;
+            var hasActiveSession = await _context.Sessions
+                .AnyAsync(s => s.TrainerId == id &&
+                               s.SessionDate.Date == now.Date &&
+                               s.Status != "Cancelled");
+
+            var upcomingBookings = await _context.Bookings
+                .Where(b => b.TrainerId == id && b.BookingDate.Date == now.Date && b.Status != "Cancelled")
+                .CountAsync();
+
+            var available = !hasActiveSession && upcomingBookings < 8;
+
+            return ApiResponse(new { trainerId = id, available });
         }
 
         [HttpGet("api/landing/trainers/{id}")]

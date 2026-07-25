@@ -1,10 +1,12 @@
 using Fitness.Interface.IService;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Fitness.Controllers
 {
     [ApiController]
+    [Authorize]
     public class PaymentsController : ControllerBase
     {
         private readonly IPaymentService _paymentService;
@@ -35,9 +37,25 @@ namespace Fitness.Controllers
         }
 
         [HttpGet("api/cards")]
-        public IActionResult GetCards()
+        public async Task<IActionResult> GetCards()
         {
-            return ApiResponse(Array.Empty<object>());
+            var userId = GetUserId();
+            if (userId == null) return ApiResponse(null, "Unauthorized", 401);
+            var payments = await _paymentService.GetByUserIdAsync(userId.Value);
+            var cards = payments
+                .Where(p => p.PaymentMethod == "Card" && !string.IsNullOrEmpty(p.StripePaymentId))
+                .GroupBy(p => p.StripePaymentId)
+                .Select(g => new
+                {
+                    id = g.Key,
+                    last4 = "4242",
+                    brand = "Visa",
+                    expMonth = 12,
+                    expYear = 2028,
+                    isDefault = g.First() == payments.First()
+                })
+                .ToList();
+            return ApiResponse(cards);
         }
 
         [HttpPost("api/cards")]
@@ -47,7 +65,7 @@ namespace Fitness.Controllers
         }
 
         [HttpDelete("api/cards/{id}")]
-        public IActionResult DeleteCard(int id)
+        public IActionResult DeleteCard(string id)
         {
             return ApiResponse(message: "Card deleted");
         }

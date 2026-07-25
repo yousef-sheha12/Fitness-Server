@@ -2,12 +2,14 @@ using Fitness.Helpers;
 using Fitness.Interface.IService;
 using Fitness.Models;
 using Fitness.Models.DTOs.Booking;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Fitness.Controllers
 {
     [ApiController]
+    [Authorize]
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _bookingService;
@@ -45,12 +47,23 @@ namespace Fitness.Controllers
         }
 
         [HttpPost("api/bookings/schedule")]
-        public async Task<IActionResult> ScheduleBooking([FromBody] Booking booking)
+        public async Task<IActionResult> ScheduleBooking([FromBody] ScheduleBookingDto dto)
         {
             var userId = GetUserId();
             if (userId == null) return ApiResponse(null, "Unauthorized", 401);
-            booking.UserId = userId.Value;
-            booking.CreatedAt = DateTime.UtcNow;
+
+            var booking = new Booking
+            {
+                UserId = userId.Value,
+                TrainerId = dto.TrainerId,
+                BookingDate = dto.BookingDate,
+                StartTime = dto.StartTime,
+                EndTime = dto.EndTime,
+                Amount = dto.Amount,
+                Notes = dto.Notes,
+                CreatedAt = DateTime.UtcNow
+            };
+
             var result = await _bookingService.CreateAsync(booking);
             return ApiResponse(result, "Booking scheduled");
         }
@@ -58,8 +71,12 @@ namespace Fitness.Controllers
         [HttpPost("api/bookings/{id}/pay")]
         public async Task<IActionResult> PayBooking(int id, [FromBody] PayBookingDto dto)
         {
+            var userId = GetUserId();
+            if (userId == null) return ApiResponse(null, "Unauthorized", 401);
+
             var booking = await _bookingService.GetByIdAsync(id);
             if (booking == null) return ApiResponse(null, "Booking not found", 404);
+            if (booking.UserId != userId.Value) return ApiResponse(null, "Forbidden", 403);
 
             var paymentIntentId = await _stripeService.CreatePaymentIntentAsync(booking.Amount, "usd");
             var payment = new Payment
@@ -67,7 +84,7 @@ namespace Fitness.Controllers
                 UserId = booking.UserId,
                 BookingId = booking.Id,
                 Amount = booking.Amount,
-                PaymentMethod = "Card",
+                PaymentMethod = dto.PaymentMethod ?? "Card",
                 StripePaymentId = paymentIntentId,
                 Status = "Pending"
             };
@@ -79,9 +96,15 @@ namespace Fitness.Controllers
         [HttpPost("api/bookings/{id}/confirm")]
         public async Task<IActionResult> ConfirmBooking(int id, [FromBody] ConfirmBookingDto dto)
         {
+            var userId = GetUserId();
+            if (userId == null) return ApiResponse(null, "Unauthorized", 401);
+
             var booking = await _bookingService.GetByIdAsync(id);
             if (booking == null) return ApiResponse(null, "Booking not found", 404);
+            if (booking.UserId != userId.Value) return ApiResponse(null, "Forbidden", 403);
+
             booking.Status = "Confirmed";
+            if (dto.Notes != null) booking.Notes = dto.Notes;
             await _bookingService.UpdateAsync(id, booking);
             return ApiResponse(message: "Booking confirmed");
         }
@@ -89,8 +112,13 @@ namespace Fitness.Controllers
         [HttpPut("api/bookings/{id}/reschedule")]
         public async Task<IActionResult> RescheduleBooking(int id, [FromBody] RescheduleBookingDto dto)
         {
+            var userId = GetUserId();
+            if (userId == null) return ApiResponse(null, "Unauthorized", 401);
+
             var booking = await _bookingService.GetByIdAsync(id);
             if (booking == null) return ApiResponse(null, "Booking not found", 404);
+            if (booking.UserId != userId.Value) return ApiResponse(null, "Forbidden", 403);
+
             booking.BookingDate = dto.BookingDate;
             booking.StartTime = dto.StartTime;
             booking.EndTime = dto.EndTime;
@@ -102,6 +130,13 @@ namespace Fitness.Controllers
         [HttpDelete("api/bookings/{id}/cancel")]
         public async Task<IActionResult> CancelBooking(int id)
         {
+            var userId = GetUserId();
+            if (userId == null) return ApiResponse(null, "Unauthorized", 401);
+
+            var booking = await _bookingService.GetByIdAsync(id);
+            if (booking == null) return ApiResponse(null, "Booking not found", 404);
+            if (booking.UserId != userId.Value) return ApiResponse(null, "Forbidden", 403);
+
             var result = await _bookingService.DeleteAsync(id);
             if (!result) return ApiResponse(null, "Booking not found", 404);
             return ApiResponse(message: "Booking cancelled");

@@ -1,11 +1,13 @@
 using Fitness.Interface.IService;
 using Fitness.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Fitness.Controllers
 {
     [ApiController]
+    [Authorize]
     public class TrainerDashboardController : ControllerBase
     {
         private readonly ITrainerService _trainerService;

@@ -20,6 +20,9 @@ namespace Fitness.Data
         public DbSet<ProgressActivity> ProgressActivities { get; set; }
         public DbSet<Contact> Contacts { get; set; }
         public DbSet<PackagePurchase> PackagePurchases { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Conversation> Conversations { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -2,12 +2,14 @@ using Fitness.Helpers;
 using Fitness.Interface.IService;
 using Fitness.Models;
 using Fitness.Models.DTOs.Profile;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Fitness.Controllers
 {
     [ApiController]
+    [Authorize]
     public class ProfileController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -103,6 +105,13 @@ namespace Fitness.Controllers
             if (userId == null) return ApiResponse(null, "Unauthorized", 401);
             var user = await _userService.GetByIdAsync(userId.Value);
             if (user == null) return ApiResponse(null, "User not found", 404);
+
+            if (!string.IsNullOrEmpty(dto.OldPassword) &&
+                !BCrypt.Net.BCrypt.Verify(dto.OldPassword, user.PasswordHash))
+            {
+                return ApiResponse(null, "Current password is incorrect", 400);
+            }
+
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             await _userService.UpdateAsync(userId.Value, user);
             return ApiResponse(message: "Password updated");

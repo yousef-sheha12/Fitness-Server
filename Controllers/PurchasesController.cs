@@ -1,10 +1,12 @@
 using Fitness.Interface.IService;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace Fitness.Controllers
 {
     [ApiController]
+    [Authorize]
     public class PurchasesController : ControllerBase
     {
         private readonly IPackagePurchaseService _packagePurchaseService;
